@@ -1,0 +1,17 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# تثبيت dependencies
+COPY package*.json ./
+RUN npm install
+
+# نسخ الكود
+COPY . .
+
+# بناء التطبيق
+RUN npm run build
+
+EXPOSE 5000
+
+CMD ["npm", "start"]

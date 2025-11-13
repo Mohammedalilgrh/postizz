@@ -1,0 +1,4 @@
+docker-compose up -d
+C:\Users\DELL\postiz-app>
+docker-compose logs postiz
+docker-compose logs -f postiz
