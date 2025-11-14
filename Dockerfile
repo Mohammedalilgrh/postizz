@@ -1,21 +1,33 @@
 FROM node:20-alpine3.19
-ARG NEXT_PUBLIC_VERSION
-ENV NEXT_PUBLIC_VERSION=$NEXT_PUBLIC_VERSION
-RUN apk add --no-cache g++ make py3-pip bash nginx
-RUN adduser -D -g 'www' www
-RUN mkdir /www
-RUN chown -R www:www /var/lib/nginx
-RUN chown -R www:www /www
 
+# Install only essential dependencies
+RUN apk add --no-cache g++ make py3-pip
 
-RUN npm --no-update-notifier --no-fund --global install pnpm@10.6.1 pm2
+# Install pnpm globally
+RUN npm install -g pnpm@10.6.1
 
 WORKDIR /app
 
-COPY . /app
-COPY var/docker/nginx.conf /etc/nginx/nginx.conf
+# Copy package files first for better caching
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY nx.json tsconfig.base.json tsconfig.json ./
 
-RUN pnpm install
-RUN NODE_OPTIONS="--max-old-space-size=4096" pnpm run build
+# Copy app-specific package files
+COPY apps/web/package.json ./apps/web/
+COPY apps/api/package.json ./apps/api/
+COPY packages/*/package.json ./packages/
 
-CMD ["sh", "-c", "nginx && pnpm run pm2"]
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy the rest of the code
+COPY . .
+
+# Build with lower memory limit for Render free tier
+RUN NODE_OPTIONS="--max-old-space-size=512" pnpm run build
+
+# Expose port
+EXPOSE 3000
+
+# Start command (simpler without nginx for now)
+CMD ["pnpm", "start"]
